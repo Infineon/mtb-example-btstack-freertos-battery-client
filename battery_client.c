@@ -67,6 +67,7 @@
 #include "inttypes.h"
 #include "wiced_bt_gatt.h"
 #include "wiced_bt_battery_client.h"
+#include "app_bt_bonding.h"
 
 #ifdef ENABLE_BT_SPY_LOG
 #include "cybt_debug_uart.h"
@@ -127,6 +128,9 @@ static battery_client_state_t battery_client_state;
 /* Host information saved in  NVRAM */
 host_info_t battery_client_hostinfo;
 
+/* To check if the device has entered pairing mode to connect and bond with a new device */
+bool pairing_mode = FALSE;
+
 /* App timer objects */
 
 /* battery_client_second_timer is a periodic timer that ticks every second. Upon
@@ -152,7 +156,6 @@ static void  battery_client_free_buffer                     (uint8_t *p_event_da
 static void  battery_client_timeout                         (TimerHandle_t timer_handle);
 static void  battery_client_fine_timeout                    (TimerHandle_t timer_handle);
 static void  battery_client_smp_bond_result                 (uint8_t result);
-static void  battery_client_load_keys_for_address_resolution(void);
 
 static wiced_bt_gatt_status_t battery_client_gatts_callback (wiced_bt_gatt_evt_t event,
                                                              wiced_bt_gatt_event_data_t *p_data);
@@ -199,7 +202,8 @@ wiced_result_t battery_client_management_callback(wiced_bt_management_evt_t even
     cy_rslt_t rslt;
     wiced_bt_dev_ble_pairing_info_t     *p_info;
     wiced_bt_device_address_t bda = { 0 };
-
+    wiced_bt_ble_scan_type_t *p_scan_type = NULL;
+    uint8_t bondindex = 0;
     printf("\n--- Event:%s ---\r\n", get_bt_event_name(event));
 
     switch (event)
@@ -283,16 +287,17 @@ wiced_result_t battery_client_management_callback(wiced_bt_management_evt_t even
             /* Assume the device won't be found. If it is, we will set this back to WICED_BT_SUCCESS */
             wiced_result = WICED_BT_ERROR;
 
-            if(app_bt_find_device_in_flash(p_event_data->paired_device_link_keys_request.bd_addr))
+            bondindex = app_bt_find_device_in_flash(p_event_data->paired_device_link_keys_request.bd_addr);
+            if ( bondindex < BOND_INDEX_MAX)
             {
                 /* Copy the keys to where the stack wants it */
-                memcpy(&(p_event_data->paired_device_link_keys_request), &peer_link_keys, sizeof(wiced_bt_device_link_keys_t));
+                memcpy(&(p_event_data->paired_device_link_keys_request), &(bond_info.link_keys[bondindex]), sizeof(wiced_bt_device_link_keys_t));
                 wiced_result = WICED_BT_SUCCESS;
             }
             else
             {
                 printf("Device Link Keys not found in the database! \n");
-
+                bondindex=0;
             }
             break;
 
@@ -349,6 +354,19 @@ wiced_result_t battery_client_management_callback(wiced_bt_management_evt_t even
             break;
 
         case BTM_BLE_SCAN_STATE_CHANGED_EVT:
+            p_scan_type = &p_event_data->ble_scan_state_changed;
+            if (BTM_BLE_SCAN_TYPE_NONE == *p_scan_type)
+            {
+                printf("Scanning stopped\n");
+#ifdef PSOC6_BLE
+                /* Refer to the Note in Document History section of Readme.md */
+                if(pairing_mode == TRUE)
+                {
+                    app_bt_add_devices_to_address_resolution_db();
+                    pairing_mode = FALSE;
+                }
+#endif
+            }
             printf( "Scan State Change: %d\r\n", p_event_data->ble_scan_state_changed );
             break;
 
@@ -385,11 +403,6 @@ void hci_trace_cback(wiced_bt_hci_trace_type_t type, uint16_t length, uint8_t* p
 static void battery_client_application_init(void)
 {
     wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
-
-    #ifdef ENABLE_BT_SPY_LOG
-    wiced_bt_dev_register_hci_trace(hci_trace_cback);
-    #endif
-
     /*
      * Interrupt configuration for User Button
      */
@@ -412,7 +425,7 @@ static void battery_client_application_init(void)
     {
         //printf("Keys found in flash, add them to Addr Res DB\r\n");
         /* Load previous paired keys for address resolution */
-        battery_client_load_keys_for_address_resolution();
+        app_bt_add_devices_to_address_resolution_db();
     }
 
     /* Register with BT stack to receive GATT callback */
@@ -427,10 +440,13 @@ static void battery_client_application_init(void)
 
     /* Prompt user */
     printf("======================================================================\n");
-    printf("| Press and Hold User Button:                                        |\n");
-    printf("|   0-2 seconds: Start Scan and Pair with Battery Server.            |\n");
-    printf("|   2-5 seconds: Request a Read of Battery Level.                    |\n");
-    printf("|   >5  seconds: Enable/Disable Battery Service.                     |\n");
+    printf("| Press and Hold User Button:                                         |\n");
+    printf("|   0-2  seconds: Start Scan and Pair with Battery Server.            |\n");
+    printf("|   2-5  seconds: Request a Read of Battery Level.                    |\n");
+    printf("|   5-10 seconds: Enable/Disable Battery Service.                     |\n");
+#ifdef PSOC6_BLE
+    printf("|   >10  seconds:  Connect, Pair and Bond with a new peer device      |\n");
+#endif
     printf("======================================================================\n");
 }
 
@@ -659,34 +675,6 @@ void battery_client_fine_timeout(TimerHandle_t timer_handle)
 }
 
 /*******************************************************************************
-* Function Name: battery_client_load_keys_for_address_resolution
-********************************************************************************
-* Summary:
-*  Add link keys to address resolution list
-*
-* Parameters:
-*  None
-*
-* Return
-*  None
-*
-*******************************************************************************/
-static void battery_client_load_keys_for_address_resolution( void )
-{
-    wiced_result_t result = wiced_bt_dev_add_device_to_address_resolution_db(&peer_link_keys);
-
-    if (WICED_BT_SUCCESS == result)
-    {
-        printf("Device added to address resolution database: ");
-        print_bd_address((uint8_t *)&peer_link_keys.bd_addr);
-    }
-    else
-    {
-        printf("Error adding device to address resolution database, Error Code %d \r\n", result);
-    }
-}
-
-/*******************************************************************************
 * Function Name: button_task
 ********************************************************************************
 * Summary:
@@ -704,7 +692,9 @@ void button_task(void *arg)
     static uint32_t button_state = USR_BUTTON_STATE_UNKNOWN;
     static unsigned long previous_timer = 0;
     static unsigned long down_duration = 0;      /* in seconds */
-
+#ifdef PSOC6_BLE
+    wiced_result_t result = WICED_BT_SUCCESS;
+#endif
     battery_client_state.usr_button_action = USR_BUTTON_ACTION_NONE;
     for(;;)
     {
@@ -723,6 +713,12 @@ void button_task(void *arg)
          *
          * 3. User button pressed and released after 5 seconds once connected
          *   - Enable/Disable battery notifications of level from server
+         *
+         * 4 . User button pressed and released after 10 seconds for PSoC6 Bluetooth LE
+         *   - This enables PSoC 6 Bluetooth LE devices to send scan request packets while active scanning.
+         *   - This is a work around for a known issue referenced in the Note section under document history.
+         *   - This work around is required only if PSoC 6 Bluetooth LE device has bonded with a device and
+         *     needs to connect with a new device.
          */
 
         if (button_state == USR_BUTTON_STATE_DOWN)
@@ -753,7 +749,11 @@ void button_task(void *arg)
                     case 5:     /* 5 seconds - Enable/Disable BAS notifications */
                         printf("Release now to %s BAS\r\n", is_bas_enabled ? "disable" : "enable");
                         break;
-
+                    case 9:     /* 9 seconds - To enter paring mode */
+#ifdef PSOC6_BLE
+                        printf("Release now to enter pairing mode\r\n");
+#endif
+                        break;
                     default:
                         break;
                     }
@@ -764,8 +764,42 @@ void button_task(void *arg)
         {
             printf("\n--- User Button Up ---\n");
             printf("Press Duration - %lu\n", down_duration);
+            if(down_duration >= 10)
+            {
+#ifdef PSOC6_BLE
+                /* Refer to the Note in document history of Readme.md */
+                printf("Entering Pairing Mode: Connect, Pair and Bond with a new peer device...\n");
+                pairing_mode = TRUE;
+                result = wiced_bt_start_advertisements(BTM_BLE_ADVERT_OFF,
+                                                       0,
+                                                       NULL);
+                /* Refer to the Note in Document History section of Readme.md */
+                result = wiced_bt_ble_address_resolution_list_clear_and_disable();
+                if(WICED_BT_SUCCESS == result)
+                {
+                    printf("Address resolution list cleared successfully \n");
+                }
+                else
+                {
+                    printf("Failed to clear address resolution list \n");
+                }
+                /* Start scanning after clearing address resolution list */
+                result = wiced_bt_ble_scan(BTM_BLE_SCAN_TYPE_HIGH_DUTY, true,
+                        battery_client_scan_result_cback);
 
-            if (down_duration > 4)
+                /* Failed to start scanning. Stop program execution */
+                if ((WICED_BT_PENDING != result) && (WICED_BT_BUSY != result))
+                {
+                    printf("Failed to start scanning!, result = %d \n", result);
+                    CY_ASSERT(0);
+                }
+                else
+                {
+                    printf("Scanning started successfully\r\n");
+                }
+#endif
+            }
+            else if (down_duration > 4)
             {
                 printf("BAC Client enabled\r\n");
                 battery_client_enable(!is_bas_enabled);
@@ -1169,7 +1203,7 @@ static void battery_client_callback(wiced_bt_battery_client_event_t event, wiced
 *  None
 *
 *******************************************************************************/
-static void battery_client_scan_result_cback( wiced_bt_ble_scan_results_t *p_scan_result, uint8_t *p_adv_data )
+void battery_client_scan_result_cback( wiced_bt_ble_scan_results_t *p_scan_result, uint8_t *p_adv_data )
 {
     wiced_result_t          status;
     wiced_bool_t            ret_status;
@@ -1353,7 +1387,6 @@ static wiced_bt_gatt_status_t battery_client_connection_up( wiced_bt_gatt_connec
     // perform primary service search
     status = wiced_bt_util_send_gatt_discover( p_conn_status->conn_id, GATT_DISCOVER_SERVICES_ALL, UUID_ATTRIBUTE_PRIMARY_SERVICE, 1, 0xffff);
     printf("start discover status:%d\r\n", status);
-
     return WICED_BT_GATT_SUCCESS;
 }
 
@@ -1382,7 +1415,6 @@ static wiced_bt_gatt_status_t battery_client_connection_down( wiced_bt_gatt_conn
 #ifdef TEST_HCI_CONTROL
     battery_client_hci_send_disconnect_event( p_conn_status->reason, p_conn_status->conn_id );
 #endif
-
     wiced_bt_battery_client_connection_down( p_conn_status );
 
     return WICED_BT_GATT_SUCCESS;
@@ -1708,8 +1740,4 @@ wiced_bt_gatt_status_t wiced_bt_util_send_gatt_discover(uint16_t conn_id, wiced_
     status = wiced_bt_gatt_client_send_discover(conn_id, type, &param);
     return status;
 }
-
-
-
-
 /* END OF FILE [] */

@@ -99,6 +99,7 @@ void battery_client_process_read_rsp(wiced_bt_gatt_operation_complete_t *p_data)
 void battery_client_indication_handler(wiced_bt_gatt_operation_complete_t *p_data);
 void battery_client_notification_handler(wiced_bt_gatt_operation_complete_t *p_data);
 wiced_bt_gatt_status_t battery_client_gatt_discovery_complete(wiced_bt_gatt_discovery_complete_t *p_data);
+void battery_client_scan_result_cback( wiced_bt_ble_scan_results_t *p_scan_result, uint8_t *p_adv_data);
 
 /* =================================== */
 

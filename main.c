@@ -43,6 +43,7 @@
 /*******************************************************************************
 * Header Files
 *******************************************************************************/
+#include "app_flash_common.h"
 #include "wiced_bt_stack.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -65,6 +66,7 @@
 #include "mtb_kvstore.h"
 #include "cybt_platform_config.h"
 #include "cybsp_bt_config.h"
+#include "app_bt_bonding.h"
 
 /*******************************************************************************
 *        Macro Definitions
@@ -83,9 +85,6 @@
 /*******************************************************************************
 * Variable Definitions
 *******************************************************************************/
-
-/*Kvstore block device*/
-mtb_kvstore_bd_t                    block_device;
 
 extern TaskHandle_t button_handle;
 
@@ -152,7 +151,7 @@ int main()
     cybt_platform_config_init(&cybsp_bt_platform_cfg);
 
     /*Initialize the block device used by kv-store for performing read/write operations to the flash*/
-    app_kvstore_bd_init(&block_device);
+    app_kvstore_bd_config(&block_device);
 
     /* Register call back and configuration with stack */
     wiced_result = wiced_bt_stack_init (battery_client_management_callback, &wiced_bt_cfg_settings);

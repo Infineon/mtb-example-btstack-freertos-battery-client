@@ -68,8 +68,21 @@ VERBOSE=
 
 # Optionally enable app and Bluetooth protocol traces and route to BTSpy
 ENABLE_SPY_TRACES?=0
+USE_INTERNAL_FLASH = 0
+
+ifeq ($(TARGET), $(filter $(TARGET), APP_CY8CKIT-062-BLE APP_CY8CPROTO-063-BLE APP_CYBLE-416045-EVAL))
+PSOC6_BLE = 1
+DEFINES+= PSOC6_BLE
+ENABLE_SPY_TRACES = 0
+USE_INTERNAL_FLASH = 1
+endif
+
 ifeq ($(ENABLE_SPY_TRACES),1)
 DEFINES+=ENABLE_BT_SPY_LOG DEBUG_UART_BAUDRATE=3000000
+endif
+
+ifeq ($(USE_INTERNAL_FLASH),1)
+DEFINES+=USE_INTERNAL_FLASH
 endif
 
 ################################################################################
