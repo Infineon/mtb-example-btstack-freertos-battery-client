@@ -53,7 +53,6 @@
 #include <string.h>
 #include "cybt_platform_trace.h"
 #include "wiced_memory.h"
-#include "cybt_debug_uart.h"
 #include "cyhal.h"
 #include "stdio.h"
 #include "GeneratedSource/cycfg_bt_settings.h"
