@@ -10,7 +10,7 @@ The Battery Service Client application is designed to connect to and access serv
 
 [View this README on GitHub.](https://github.com/Infineon/mtb-example-btstack-freertos-battery-client)
 
-[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzU5NDgiLCJTcGVjIE51bWJlciI6IjAwMi0zNTk0OCIsIkRvYyBUaXRsZSI6IkJUU1RBQ0s6IEJsdWV0b290aCZyZWc7IExFIEJhdHRlcnkgU2VydmljZSBDbGllbnQiLCJyaWQiOiJsbmd1eWVuIiwiRG9jIHZlcnNpb24iOiIyLjAuMCIsIkRvYyBMYW5ndWFnZSI6IkVuZ2xpc2giLCJEb2MgRGl2aXNpb24iOiJNQ0QiLCJEb2MgQlUiOiJJQ1ciLCJEb2MgRmFtaWx5IjoiQlRBQkxFIn0=)
+[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzU5NDgiLCJTcGVjIE51bWJlciI6IjAwMi0zNTk0OCIsIkRvYyBUaXRsZSI6IkJUU1RBQ0s6IEJsdWV0b290aCZyZWc7IExFIEJhdHRlcnkgU2VydmljZSBDbGllbnQiLCJyaWQiOiJsbmd1eWVuIiwiRG9jIHZlcnNpb24iOiIyLjEuMCIsIkRvYyBMYW5ndWFnZSI6IkVuZ2xpc2giLCJEb2MgRGl2aXNpb24iOiJNQ0QiLCJEb2MgQlUiOiJJQ1ciLCJEb2MgRmFtaWx5IjoiQlRBQkxFIn0=)
 ## Requirements
 
 - [ModusToolbox&trade; software](https://www.infineon.com/modustoolbox) v3.2 or later (tested with v3.2)
@@ -18,9 +18,8 @@ The Battery Service Client application is designed to connect to and access serv
    - CY8CKIT-062-BLE : v4.0.0
    - CY8CPROTO-063-BLE : v4.0.0
    - CYBLE-416045-EVAL : v4.0.0
-   - CYW920829M2EVK-02 : v2.0.0
-   - CYW989829M2EVB-01 : v2.0.0
-   - CYW989829M2EVB-03 : v2.0.0
+   - CYW920829M2EVK-02 : v3.0.0
+   - CYW989829M2EVB-01 : v3.0.0
 - Programming language: C
 - Associated parts: [AIROC&trade; CYW20829 Bluetooth&reg; LE SoC](https://www.infineon.com/cms/en/product/promopages/airoc20829), [PSoC&trade; 6 MCU with AIROC&trade; Bluetooth&reg; LE](https://www.infineon.com/cms/en/product/microcontroller/32-bit-psoc-arm-cortex-microcontroller/psoc-6-32-bit-arm-cortex-m4-mcu/psoc-63/)
 
@@ -34,7 +33,7 @@ The Battery Service Client application is designed to connect to and access serv
 ## Supported kits (make variable 'TARGET')
 
 - [AIROC&trade; CYW20829 Bluetooth&reg; LE evaluation kit](https://www.infineon.com/CYW920829M2EVK-02) (`CYW920829M2EVK-02`) – Default value of `TARGET`
-- AIROC&trade; CYW89829 Bluetooth&reg; LE evaluation kit (`CYW989829M2EVB-01`,`CYW989829M2EVB-03`)
+- AIROC&trade; CYW89829 Bluetooth&reg; LE evaluation kit (`CYW989829M2EVB-01`)
 - [PSoC&trade; 6 Bluetooth&reg; LE pioneer kit](https://www.infineon.com/CY8CKIT-062-BLE) (`CY8CKIT-062-BLE`)
 - [PSoC&trade; 6 Bluetooth&reg; LE prototyping kit](https://www.infineon.com/CY8CPROTO-063-BLE) (`CY8CPROTO-063-BLE`)
 - [EZ-BLE Arduino Evaluation Board](https://www.infineon.com/cms/en/product/evaluation-boards/cyble-416045-eval/) (`CYBLE-416045-EVAL`)
@@ -343,6 +342,7 @@ Document Title: *CE235948* – *Bluetooth&reg; LE Battery Service Client*
 | 1.2.1   | Readme Updated  |
 | 1.3.0   | Added support for CYW989829M2EVB-01  |
 | 2.0.0   | Added support for CYW989829M2EVB-03, BSP and BTStack-integration major update for BT Firmware  |
+| 2.1.0   | Remove support for CYW989829M2EVB-03  |
 -------------------------------------------------------------------------------
 
 **Note:** A workaround has been provided in app_bt_gatt_handler.c for the known issue(section: v1.0.0) mentioned in Release.md of cat1cm0p library. When PSoC 6 Bluetooth LE is in the GAP Central role and does Active scanning, the workaround ensures that the device sends scan request packets.
